@@ -25,6 +25,10 @@ public class HydratedMongoDB {
 	private String databaseName;
 	
 	private HydraClient hydraClient;
+
+	private LinkedHashSet<String> servers = new LinkedHashSet<String>();
+
+	private MongoClient mongoClient;
 	
 	public HydratedMongoDB(String applicationName, String databaseName, HydraClient hydraClient) {
 		this.hydraClient = hydraClient;
@@ -33,11 +37,24 @@ public class HydratedMongoDB {
 	}
 
 	public DBCollection getCollection(String collectionName) {
-		LinkedHashSet<String> servers = hydraClient.get(applicationName);
+		LinkedHashSet<String> newServers = hydraClient.get(applicationName);
 		
-		MongoClient mongoClient = new MongoClient(createServerAddress(servers));
-		mongoDatabase = mongoClient.getDB(databaseName);
+		if (!servers.equals(newServers)){
+			servers = newServers;
+			reconnectMongoClient();
+			mongoDatabase = mongoClient.getDB(databaseName);
+		}
+	
 		return mongoDatabase.getCollection(collectionName);
+	}
+
+	private void reconnectMongoClient() {
+		MongoClient oldMongoClient = mongoClient;
+		mongoClient = new MongoClient(createServerAddress(servers));
+		
+		if (oldMongoClient != null){
+			oldMongoClient.close();
+		}
 	}
 	
 	private List<ServerAddress> createServerAddress(Collection<String> servers) {
