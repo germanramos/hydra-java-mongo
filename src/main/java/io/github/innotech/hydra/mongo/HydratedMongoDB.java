@@ -29,6 +29,10 @@ public class HydratedMongoDB {
 	private LinkedHashSet<String> servers = new LinkedHashSet<String>();
 
 	private MongoClient mongoClient;
+
+	//The connection with mongo remains open until the next hydra server change for not destroy the running request 
+	//with mongo in this connection.
+	private MongoClient staleMongoClient;
 	
 	public HydratedMongoDB(String applicationName, String databaseName, HydraClient hydraClient) {
 		this.hydraClient = hydraClient;
@@ -39,22 +43,29 @@ public class HydratedMongoDB {
 	public DBCollection getCollection(String collectionName) {
 		LinkedHashSet<String> newServers = hydraClient.get(applicationName);
 		
+		if (newServers.isEmpty()){
+			throw new IllegalStateException("Hydra not found any active mongo servers.");
+		}
+		
 		if (!servers.equals(newServers)){
-			servers = newServers;
-			reconnectMongoClient();
-			mongoDatabase = mongoClient.getDB(databaseName);
+			swapMongoServers(newServers);
 		}
 	
 		return mongoDatabase.getCollection(collectionName);
 	}
 
-	private void reconnectMongoClient() {
-		MongoClient oldMongoClient = mongoClient;
+	private void swapMongoServers(LinkedHashSet<String> newServers) {
+		MongoClient oldMongoClient = staleMongoClient;
+
+		servers = newServers;
+		staleMongoClient = mongoClient;
 		mongoClient = new MongoClient(createServerAddress(servers));
 		
 		if (oldMongoClient != null){
 			oldMongoClient.close();
 		}
+		
+		mongoDatabase = mongoClient.getDB(databaseName);
 	}
 	
 	private List<ServerAddress> createServerAddress(Collection<String> servers) {

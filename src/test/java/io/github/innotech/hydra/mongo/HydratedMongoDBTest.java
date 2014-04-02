@@ -94,7 +94,7 @@ public class HydratedMongoDBTest {
 		
 		assertEquals("The collection must be equals",firstCollection,secondCollection);
 	}
-
+	
 	@Test
 	public void shouldChangeTheDatabaseIfSeversChange() throws Exception{
 		recordUriBuilderStub(MONGO_SERVER_URL);
@@ -117,8 +117,30 @@ public class HydratedMongoDBTest {
 		
 		DBCollection secondCollection = hydratedMongoDB.getCollection(COLLECTION_NAME);
 		
+		recordUriBuilderStub(MONGO_SERVER_URL);
+		recordHydraClientStub(MONGO_SERVER_URL);	
+		
+		hydratedMongoDB.getCollection(COLLECTION_NAME);
+		
 		assertNotEquals("The collection must not be equals",firstCollection,secondCollection);
 		verify(mongoClient).close();
+	}
+	
+	@Test(expected=IllegalStateException.class)
+	public void shouldNotChangeTheDatabaseIfNoServerReturns() throws Exception{
+		recordUriBuilderStub(MONGO_SERVER_URL);
+		recordHydraClientStub(MONGO_SERVER_URL);	
+		
+		ServerAddress serverAddress = mock(ServerAddress.class,"serverAddress");
+		MongoClient mongoClient = recordMongoClientStub(serverAddress);		
+		
+		recordMongoCollectionStub(mongoClient, "mongoDatabase", collection);
+		
+		hydratedMongoDB.getCollection(COLLECTION_NAME);
+		
+		recordHydraClientStub();	
+		
+		hydratedMongoDB.getCollection(COLLECTION_NAME);
 	}
 	
 	private void recordMongoCollectionStub(MongoClient mongoClient, String database, DBCollection collection) {
@@ -127,9 +149,12 @@ public class HydratedMongoDBTest {
 		when(mongoDatabase.getCollection(COLLECTION_NAME)).thenReturn(collection);
 	}
 	
-	private void recordHydraClientStub(String uri) {
+	private void recordHydraClientStub(String ... uris) {
 		LinkedHashSet<String> servers = new LinkedHashSet<String>();
-		servers.add(uri);
+		for (String uri : uris) {
+			servers.add(uri);
+		}
+		
 		when(hydraClient.get(APPLICATION)).thenReturn(servers);
 	}
 	
