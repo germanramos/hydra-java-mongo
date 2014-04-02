@@ -14,7 +14,9 @@ import javax.ws.rs.core.UriBuilder;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.MongoClient;
+import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
+import com.mongodb.WriteConcern;
 
 public class HydratedMongoDB {
 	
@@ -30,6 +32,10 @@ public class HydratedMongoDB {
 
 	private MongoClient mongoClient;
 
+	private ReadPreference readPreference = ReadPreference.primary();
+	
+	private WriteConcern writeConcern = WriteConcern.NORMAL;
+	
 	//The connection with mongo remains open until the next hydra server change for not destroy the running request 
 	//with mongo in this connection.
 	private MongoClient staleMongoClient;
@@ -59,7 +65,10 @@ public class HydratedMongoDB {
 
 		servers = newServers;
 		staleMongoClient = mongoClient;
+		
 		mongoClient = new MongoClient(createServerAddress(servers));
+		mongoClient.setReadPreference(readPreference);
+		mongoClient.setWriteConcern(writeConcern);
 		
 		if (oldMongoClient != null){
 			oldMongoClient.close();
@@ -81,5 +90,21 @@ public class HydratedMongoDB {
 		}
 		
 		return serverAdresses;
+	}
+
+	public ReadPreference getReadPreference() {
+		return readPreference;
+	}
+
+	public void setReadPreference(ReadPreference readPreference) {
+		this.readPreference = readPreference;
+	}
+
+	public WriteConcern getWriteConcern() {
+		return writeConcern;
+	}
+
+	public void setWriteConcern(WriteConcern writeConcern) {
+		this.writeConcern = writeConcern;
 	}	
 }

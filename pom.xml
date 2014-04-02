@@ -32,7 +32,7 @@
     <dependency>
       <groupId>io.github.innotech.hydra</groupId>
       <artifactId>client</artifactId>
-      <version>30</version>
+      <version>32</version>
     </dependency>
     <dependency>
       <groupId>javax.ws.rs</groupId>
