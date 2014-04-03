@@ -64,13 +64,15 @@ public class HydratedMongoDB {
 	 * is mandatory. If not call the first call to getColection initialize.
 	 */
 	public void initMongoConnection() {
-		if (mutex.tryLock()) {
-			try {
-				servers = hydraClient.get(applicationName);
-				createNewMongoClient();
-			} finally {
-				mutex.unlock();
-			}
+		try {
+			mutex.lock();
+			
+			servers = hydraClient.get(applicationName);
+			createNewMongoClient();
+			
+			mongoDatabase = mongoClient.getDB(databaseName);
+		} finally {
+			mutex.unlock();
 		}
 	}
 
@@ -85,16 +87,31 @@ public class HydratedMongoDB {
 			throw new IllegalStateException("Hydra not found any active mongo servers.");
 		}
 
+		if (mongoDatabase != null){
+			swapWhenServersAdressChange(newServers);
+		}
+		else{
+			swapWhenServersAdressChangeLocked(newServers);
+		}
+		
+		return mongoDatabase.getCollection(collectionName);
+	}
+
+	private void swapWhenServersAdressChangeLocked(LinkedHashSet<String> newServers) {
 		try {
 			mutex.lock();
-			if (!servers.equals(newServers)) {
-				swapMongoServers(newServers);
-			}
+			swapWhenServersAdressChange(newServers);
 		} finally {
 			mutex.unlock();
 		}
+	}
 
-		return mongoDatabase.getCollection(collectionName);
+	private void swapWhenServersAdressChange(LinkedHashSet<String> newServers) {
+		if (servers.equals(newServers)) {
+			return;
+		}
+		
+		swapMongoServers(newServers);
 	}
 
 	private void swapMongoServers(LinkedHashSet<String> newServers) {
