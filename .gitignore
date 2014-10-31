@@ -246,3 +246,10 @@ unity/revolt-101/builds
 ######################
 .vagrant
 kekraft/kekraft
+
+#####################
+# Intellij IDEA 
+#####################
+.idea
+*.iml
+
